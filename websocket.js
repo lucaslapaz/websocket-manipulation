@@ -1,15 +1,3 @@
-// ==UserScript==
-// @name         manipulacao-websocket
-// @namespace    http://tampermonkey.net/
-// @version      0.1
-// @description  try to take over the world!
-// @author       lucaslapaz
-// @match        https://xkekos.tv/bigclient
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=habblet.city
-// @grant        none
-// ==/UserScript==
-
-
 /**
  * Class that allows reading and interpreting packets. Each developer implements their own packet structure, so it will likely be necessary to modify the class to meet specific needs.
  * 
@@ -82,13 +70,14 @@ class BinaryWriter {
     }
 }
 
-
 window.wss = []
 const RECEIVE_BINARY_ARRAY = false;
 const SEND_BINARY_ARRAY = false;
-const ENDPOINT = "wss://xkekosws.atlantaserver.me:2096";
+const ENDPOINT = "wss://endpoint:2096";
 const USE_ENDPOINT = true;
 const log = window.console.log;
+
+
 
 if (WebSocket.prototype.constructor.name != "WS") {
     const ws = window.WebSocket;
@@ -100,22 +89,22 @@ if (WebSocket.prototype.constructor.name != "WS") {
 
         constructor(...args) {
             super(...args);
-
             this.binaryType = RECEIVE_BINARY_ARRAY ? "arraybuffer" : "blob";
-
             if (USE_ENDPOINT && ENDPOINT) {
-                if (args[0] == ENDPOINT) {
-                    window.wss = this;
-                }
+                if (args[0] == ENDPOINT) window.wss = this
             } else {
                 window.wss.push(this);
             }
-            this.addEventListener("message", this.analyzeReceivedPackets);
-            this.analyzeSentPackets();
+            this.addEventListener("message", analyzeReceivedPackets);
+            analyzeSentPackets(this);
         }
 
         addEventListener(name, cb) {
             super.addEventListener(name, cb);
+        }
+
+        dispatchEvent(name) {
+            super.dispatchEvent(name);
         }
 
         /**
@@ -141,17 +130,14 @@ if (WebSocket.prototype.constructor.name != "WS") {
         /**
          * Sends a packet to the server through the WebSocket instance.
          * 
-         * @param {string | ArrayBuffer} message - Packet to be sent to the server, as if the client had sent it.
+         * @param {string | ArrayBuffer} packet - Packet to be sent to the server, as if the client had sent it.
          * @returns {ArrayBuffer}
-         * 
-         * @example
-         * 
          */
 
-        sendPacket(message) {
-            let byteArray = message;
-            if (typeof message === 'string') {
-                byteArray = this.hexStringToByteArray(message);
+        sendPacket(packet) {
+            let byteArray = packet;
+            if (typeof packet === 'string') {
+                byteArray = this.hexStringToByteArray(packet);
             }
             this.send.bind(this)(byteArray);
             return byteArray;
@@ -160,14 +146,14 @@ if (WebSocket.prototype.constructor.name != "WS") {
         /**
          * Simulates the receipt of a packet by the server in the connection.
          * 
-         * @param {string} message - Packet to be simulated, as if received from the server.
+         * @param {string} packet - Packet to be simulated, as if received from the server.
          * @returns {ArrayBuffer}
          */
 
-        simulatePacket(message) {
-            let byteArray = message;
-            if (typeof message === 'string') {
-                byteArray = this.hexStringToByteArray(message);
+        simulatePacket(packet) {
+            let byteArray = packet;
+            if (typeof packet === 'string') {
+                byteArray = this.hexStringToByteArray(packet);
             }
             if (!SEND_BINARY_ARRAY) {
                 byteArray = new Blob([byteArray])
@@ -190,30 +176,9 @@ if (WebSocket.prototype.constructor.name != "WS") {
          */
 
         analyzeSentPackets() {
-            // Usage example:
-            // 00000011 068e 00096 f6c61206d756e646f00000001
-
             const sendCopy = this.send;
             this.send = function (data) {
-
-                if(data.byteLength < 6) {
-                    sendCopy.bind(this)(data);
-                    return;
-                };
-
-                const reader = new BinaryReader(data);
-                const packageLength = reader.readInt();
-                const header = reader.readShort();
-
-                if(header != 1678) {
-                    sendCopy.bind(this)(data);
-                    return
-                };
-
-                const messageLength = reader.readShort();
-                const message = reader.readString(messageLength);
-                log(`Sent message: ${message}`);
-                
+                // Your code here
                 sendCopy.bind(this)(data);
             }
         }
@@ -223,55 +188,10 @@ if (WebSocket.prototype.constructor.name != "WS") {
          * 
          * @param {MessageEvent} event 
          */
-
+        
         async analyzeReceivedPackets(event) {
-            // Usage example:
-            // 00000021 047a 00000003 0009 6f6c61206d756e646f00000000000000000000000000000000
-            let data = null;
-
-            if(event.data instanceof Blob){
-                await event.data.arrayBuffer()
-                .then((arrayBuffer) => {
-                    data = arrayBuffer;
-                })
-                .catch((error) => {
-                    log(`Error converting blob to ArrayBuffer: ${error}`)
-                })
-            }else if (event.data instanceof ArrayBuffer){
-                data = event.data;
-            }else{
-                log("Data is neither Blob nor ArrayBuffer")
-                return;
-            }
-            
-            // Creates BinaryReader
-            if(data.byteLength < 6) return;
-
-            const reader = new BinaryReader(data);
-            const packageLength = reader.readInt();
-            const header = reader.readShort();
-
-            if(header !== 1146) return;
-
-            const user = reader.readInt();
-            const messageLength = reader.readShort();
-            const message = reader.readString(messageLength);
-
-            if(message.toLowerCase() === 'hello'){
-                //Creates new packet using BinaryWriter
-                const writer = new BinaryWriter();
-                writer.writeInt(0);
-                writer.writeShort(1678);
-                const msg = new TextEncoder().encode("How are you?");
-                writer.writeShort(msg.length);
-                writer.writeString(msg);
-                writer.offset = 0;
-                writer.writeInt(writer.binary.length - 4);
-                const binary = writer.compose();
-                this.sendPacket(binary);
-            }
-            
-            log(`Received message: ${message}`);
+            let data = event.data;
+            // Your code here
         }
     }
     window.WebSocket = WS;
